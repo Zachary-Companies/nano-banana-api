@@ -10,7 +10,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@google/genai": "*"
+    "@google/generative-ai": "^0.21.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.0",

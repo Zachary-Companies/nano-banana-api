@@ -1,13 +1,12 @@
 /**
  * Nano Banana API Client
- * Wraps the @google/genai package
+ * Wraps the @google/generative-ai package
  *
  * @packageDocumentation
  */
 
 // Import the underlying package
-// Note: You may need to adjust this import based on the package's export structure
-import * as nanoBananaSdk from '@google/genai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
 /**
  * Configuration for NanoBananaClient
@@ -20,7 +19,7 @@ export interface NanoBananaConfig {
 /**
  * Nano Banana API Client
  *
- * This client wraps the @google/genai package and provides
+ * This client wraps the @google/generative-ai package and provides
  * a consistent interface for use in our agent system.
  *
  * @example
@@ -32,20 +31,19 @@ export interface NanoBananaConfig {
  */
 export class NanoBananaClient {
   private config: NanoBananaConfig
-  private sdk: typeof nanoBananaSdk
+  private genAI: GoogleGenerativeAI
 
   constructor(config: NanoBananaConfig) {
     this.config = config
-    this.sdk = nanoBananaSdk
-    this.apiKey = config.apiKey
+    this.genAI = new GoogleGenerativeAI(config.apiKey)
   }
 
   /**
-   * Get the underlying SDK instance
+   * Get the underlying GoogleGenerativeAI instance
    * Use this for direct access to all SDK functionality
    */
-  getSdk(): typeof nanoBananaSdk {
-    return this.sdk
+  getGenAI(): GoogleGenerativeAI {
+    return this.genAI
   }
 
   /**
@@ -55,19 +53,32 @@ export class NanoBananaClient {
     return { ...this.config }
   }
 
-  // TODO: Add wrapper methods for common operations
-  // The methods below are examples - customize based on the actual SDK
+  /**
+   * Generate an image using Imagen
+   */
+  async generateImage(prompt: string, options?: {
+    model?: string
+    numberOfImages?: number
+  }): Promise<string[]> {
+    const model = this.genAI.getGenerativeModel({
+      model: options?.model || 'gemini-2.0-flash-exp'
+    })
+
+    const result = await model.generateContent(prompt)
+    const response = await result.response
+    return [response.text()]
+  }
 
   /**
-   * Example method - replace with actual SDK operations
+   * Health check
    */
   async healthCheck(): Promise<{ ok: boolean; sdk: string }> {
     return {
       ok: true,
-      sdk: '@google/genai'
+      sdk: '@google/generative-ai'
     }
   }
 }
 
 // Re-export types from the underlying package for convenience
-export { nanoBananaSdk }
+export { GoogleGenerativeAI }
