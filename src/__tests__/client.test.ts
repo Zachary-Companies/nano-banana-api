@@ -2,8 +2,9 @@ import { NanoBananaClient } from '../index'
 import * as fs from 'fs'
 import * as path from 'path'
 
-// Mock the environment variable for tests
-process.env.NanoBanana_ApiKey = 'test-api-key'
+// Mock the environment variables for tests
+process.env.NanoBanana_ApiKey = 'test-google-api-key'
+process.env.OPENAI_API_KEY = 'test-openai-api-key'
 
 describe('NanoBananaClient', () => {
   const testOutputDir = path.join(__dirname, '../../temp-test')
@@ -23,28 +24,56 @@ describe('NanoBananaClient', () => {
   })
 
   describe('constructor', () => {
-    it('should create a client instance with env API key', () => {
+    it('should create a client instance with env API keys', () => {
       const client = new NanoBananaClient({ outputDir: testOutputDir })
       expect(client).toBeInstanceOf(NanoBananaClient)
     })
 
-    it('should create a client instance with explicit API key', () => {
+    it('should create a client instance with explicit API keys', () => {
       const client = new NanoBananaClient({
-        apiKey: 'explicit-key',
+        apiKey: 'explicit-google-key',
+        openaiApiKey: 'explicit-openai-key',
         outputDir: testOutputDir
       })
       expect(client).toBeInstanceOf(NanoBananaClient)
     })
 
-    it('should throw if no API key is available', () => {
-      const originalKey = process.env.NanoBanana_ApiKey
+    it('should create client with only OpenAI key', () => {
+      const originalGoogleKey = process.env.NanoBanana_ApiKey
       delete process.env.NanoBanana_ApiKey
 
+      const client = new NanoBananaClient({ outputDir: testOutputDir })
+      expect(client).toBeInstanceOf(NanoBananaClient)
+      expect(client.getOpenAI()).toBeDefined()
+      expect(client.getGenAI()).toBeUndefined()
+
+      process.env.NanoBanana_ApiKey = originalGoogleKey
+    })
+
+    it('should create client with only Google key', () => {
+      const originalOpenAIKey = process.env.OPENAI_API_KEY
+      delete process.env.OPENAI_API_KEY
+
+      const client = new NanoBananaClient({ outputDir: testOutputDir })
+      expect(client).toBeInstanceOf(NanoBananaClient)
+      expect(client.getGenAI()).toBeDefined()
+      expect(client.getOpenAI()).toBeUndefined()
+
+      process.env.OPENAI_API_KEY = originalOpenAIKey
+    })
+
+    it('should throw if no API key is available', () => {
+      const originalGoogleKey = process.env.NanoBanana_ApiKey
+      const originalOpenAIKey = process.env.OPENAI_API_KEY
+      delete process.env.NanoBanana_ApiKey
+      delete process.env.OPENAI_API_KEY
+
       expect(() => new NanoBananaClient({ outputDir: testOutputDir })).toThrow(
-        'API key is required'
+        'API key required'
       )
 
-      process.env.NanoBanana_ApiKey = originalKey
+      process.env.NanoBanana_ApiKey = originalGoogleKey
+      process.env.OPENAI_API_KEY = originalOpenAIKey
     })
 
     it('should create output directory if it does not exist', () => {
@@ -67,14 +96,29 @@ describe('NanoBananaClient', () => {
 
       expect(config.outputDir).toBe(testOutputDir)
       expect((config as any).apiKey).toBeUndefined()
+      expect((config as any).openaiApiKey).toBeUndefined()
     })
   })
 
   describe('getGenAI', () => {
-    it('should return the underlying GoogleGenerativeAI instance', () => {
-      const client = new NanoBananaClient({ outputDir: testOutputDir })
+    it('should return the underlying GoogleGenerativeAI instance when configured', () => {
+      const client = new NanoBananaClient({
+        apiKey: 'test-key',
+        outputDir: testOutputDir
+      })
       const genAI = client.getGenAI()
       expect(genAI).toBeDefined()
+    })
+  })
+
+  describe('getOpenAI', () => {
+    it('should return the underlying OpenAI instance when configured', () => {
+      const client = new NanoBananaClient({
+        openaiApiKey: 'test-key',
+        outputDir: testOutputDir
+      })
+      const openai = client.getOpenAI()
+      expect(openai).toBeDefined()
     })
   })
 

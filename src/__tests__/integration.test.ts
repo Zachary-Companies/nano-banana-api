@@ -1,7 +1,7 @@
 /**
  * Integration tests for NanoBananaClient
  *
- * These tests make real API calls and require a valid API key.
+ * These tests make real API calls and require valid API keys.
  * Run with: npm run test:integration
  */
 
@@ -9,16 +9,17 @@ import { NanoBananaClient, createClient } from '../index'
 import * as fs from 'fs'
 import * as path from 'path'
 
-// Skip if no API key is available
-const apiKey = process.env.NanoBanana_ApiKey
-const describeIfApiKey = apiKey ? describe : describe.skip
+// Skip if no API keys are available
+const hasOpenAI = !!process.env.OPENAI_API_KEY
+const hasGoogle = !!process.env.NanoBanana_ApiKey
+const describeIfApiKey = (hasOpenAI || hasGoogle) ? describe : describe.skip
 
 describeIfApiKey('NanoBananaClient Integration Tests', () => {
   const outputDir = path.join(__dirname, '../../temp')
   let client: NanoBananaClient
 
   beforeAll(() => {
-    // Create client with default env API key
+    // Create client with default env API keys
     client = createClient({ outputDir })
   })
 
@@ -33,58 +34,92 @@ describeIfApiKey('NanoBananaClient Integration Tests', () => {
       const result = await client.healthCheck()
 
       expect(result.ok).toBe(true)
-      expect(result.sdk).toBe('@google/generative-ai')
-      expect(result.models.length).toBeGreaterThan(0)
+      // At least one provider should be available
+      expect(result.openai || result.google).toBe(true)
     }, 30000) // 30 second timeout
   })
 
-  describe('generateText', () => {
-    it('should generate text response', async () => {
-      const prompt = 'Say "Hello, Nano Banana!" and nothing else.'
-      const result = await client.generateText(prompt)
+  describe('generateText (Google)', () => {
+    const describeIfGoogle = hasGoogle ? describe : describe.skip
 
-      expect(result).toBeDefined()
-      expect(result.length).toBeGreaterThan(0)
-      console.log('Text generation result:', result)
-    }, 30000)
+    describeIfGoogle('with Google API', () => {
+      it('should generate text response', async () => {
+        const prompt = 'Say "Hello, Nano Banana!" and nothing else.'
+        const result = await client.generateText(prompt)
+
+        expect(result).toBeDefined()
+        expect(result.length).toBeGreaterThan(0)
+        console.log('Text generation result:', result)
+      }, 30000)
+    })
   })
 
-  describe('generateImage', () => {
-    it('should generate and save an image', async () => {
-      const prompt = 'A cute cartoon banana wearing sunglasses'
+  describe('generateImage (OpenAI DALL-E)', () => {
+    const describeIfOpenAI = hasOpenAI ? describe : describe.skip
 
-      const images = await client.generateImage(prompt, {
-        filename: 'test-banana',
-        save: true
-      })
+    describeIfOpenAI('with OpenAI API', () => {
+      it('should generate and save a PNG image', async () => {
+        const prompt = 'A cute cartoon banana wearing sunglasses'
 
-      expect(images.length).toBeGreaterThan(0)
+        const images = await client.generateImage(prompt, {
+          filename: 'test-banana',
+          size: '1024x1024',
+          save: true
+        })
 
-      const image = images[0]
-      expect(image.data).toBeDefined()
-      expect(image.mimeType).toBeDefined()
+        expect(images.length).toBeGreaterThan(0)
 
-      if (image.filePath) {
-        expect(fs.existsSync(image.filePath)).toBe(true)
-        console.log('Image saved to:', image.filePath)
+        const image = images[0]
+        expect(image.data).toBeDefined()
+        expect(image.mimeType).toBe('image/png')
 
-        // Verify file has content
-        const stats = fs.statSync(image.filePath)
-        expect(stats.size).toBeGreaterThan(0)
-      }
-    }, 60000) // 60 second timeout for image generation
+        if (image.filePath) {
+          expect(fs.existsSync(image.filePath)).toBe(true)
+          console.log('Image saved to:', image.filePath)
 
-    it('should generate image without saving', async () => {
-      const prompt = 'A simple red circle'
+          // Verify file has content
+          const stats = fs.statSync(image.filePath)
+          expect(stats.size).toBeGreaterThan(0)
+        }
+      }, 90000) // 90 second timeout for image generation
 
-      const images = await client.generateImage(prompt, {
-        save: false
-      })
+      it('should generate image without saving', async () => {
+        const prompt = 'A simple red circle'
 
-      expect(images.length).toBeGreaterThan(0)
-      expect(images[0].filePath).toBeUndefined()
-      expect(images[0].data).toBeDefined()
-    }, 60000)
+        const images = await client.generateImage(prompt, {
+          save: false,
+          size: '1024x1024'
+        })
+
+        expect(images.length).toBeGreaterThan(0)
+        expect(images[0].filePath).toBeUndefined()
+        expect(images[0].data).toBeDefined()
+      }, 90000)
+    })
+  })
+
+  describe('generateSvg (Google)', () => {
+    const describeIfGoogle = hasGoogle ? describe : describe.skip
+
+    describeIfGoogle('with Google API', () => {
+      it('should generate and save an SVG image', async () => {
+        const prompt = 'A simple yellow smiley face'
+
+        const image = await client.generateSvg(prompt, {
+          filename: 'test-smiley',
+          save: true
+        })
+
+        expect(image.data).toBeDefined()
+        expect(image.mimeType).toBe('image/svg+xml')
+        expect(image.data).toContain('<svg')
+
+        if (image.filePath) {
+          expect(fs.existsSync(image.filePath)).toBe(true)
+          console.log('SVG saved to:', image.filePath)
+        }
+      }, 60000)
+    })
   })
 
   describe('file management', () => {
@@ -102,16 +137,17 @@ describeIfApiKey('NanoBananaClient Integration Tests', () => {
   })
 })
 
-// Quick manual test
-describeIfApiKey('Quick Manual Test', () => {
-  it('generates a futuristic city image', async () => {
+// Quick manual test for PNG generation
+const describeIfOpenAI = hasOpenAI ? describe : describe.skip
+describeIfOpenAI('Quick Manual Test - PNG Generation', () => {
+  it('generates a futuristic city PNG image', async () => {
     const client = createClient()
 
-    console.log('Generating futuristic city image...')
+    console.log('Generating futuristic city image with DALL-E...')
 
     const images = await client.generateImage(
       'A futuristic cyberpunk city at night with neon lights and flying cars',
-      { filename: 'futuristic-city' }
+      { filename: 'futuristic-city', size: '1024x1024' }
     )
 
     console.log('Generated', images.length, 'image(s)')
@@ -120,5 +156,6 @@ describeIfApiKey('Quick Manual Test', () => {
     })
 
     expect(images.length).toBeGreaterThan(0)
-  }, 90000)
+    expect(images[0].mimeType).toBe('image/png')
+  }, 120000)
 })
