@@ -1,6 +1,6 @@
 {
   "name": "@zachary/nano-banana-api",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Image generation client using Gemini native image generation (Nano Banana)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
