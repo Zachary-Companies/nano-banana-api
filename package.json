@@ -1,19 +1,21 @@
 {
   "name": "@zachary/nano-banana-api",
   "version": "1.0.2",
-  "description": "An image generator using Google Generative AI",
+  "description": "Image generation client using Gemini native image generation (Nano Banana)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
     "test": "jest",
     "test:integration": "jest --testPathPattern=integration",
+    "publish:patch": "npm version patch && npm publish",
+    "all": "npm run build && npm test && npm run commit && npm run publish:patch",
+    "commit": "git add . && git commit -m \"Auto-update\" || true",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.21.0",
-    "dotenv": "^16.3.1",
-    "openai": "^4.0.0"
+    "@google/genai": "^1.0.0",
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
     "@types/jest": "^29.5.0",
